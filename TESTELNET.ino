@@ -1,6 +1,5 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
-#include <SoftwareSerial.h>
 
 #include "WebServer_WT32_ETH01.h"
 
@@ -8,7 +7,6 @@
 #define ETH_CLK_MODE_ETH_CLOCK_GPIO0_IN
 #define _ETHERNET_WEBSERVER_LOGLEVEL_       3
 
-SoftwareSerial NMEA(36,15);
 
 const char * ssid = "NATA"; 
 const char * pwd = "11Januari";
@@ -25,7 +23,7 @@ const IPAddress secondaryDNS(8, 8, 4, 4);
 // it can be ip address of the server or 
 // a network broadcast address
 // here is broadcast address
-const char * udpAddress = "192.168.1.4"; // your pc ip
+const char * udpAddress = "192.168.1.5"; // your pc ip
 const int udpPort = 8081; //port server
 const int udpPort1 = 8082; //port server
 
@@ -40,29 +38,29 @@ byte buff[BUFFER_SIZE];
 TaskHandle_t Task1;
 TaskHandle_t Task2;
 
-const int led_1 = 2;
-const int led_2 = 23;
-
 void setup() {
-  Serial.begin(38400); 
-  NMEA.begin(38400);
-  pinMode(led_1, OUTPUT);
-  pinMode(led_2, OUTPUT);
+  Serial.begin(921600); 
+  Serial2.setPins(5,17);
+  Serial2.begin(921600,SERIAL_8N1,5,17);
+  Serial2.setHwFlowCtrlMode(HW_FLOWCTRL_DISABLE);
+  
   WT32_ETH01_onEvent();
   ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER);
   ETH.config(local_IP, gateway, subnet, primaryDNS);
   WT32_ETH01_waitForConnect();
-//  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
-//      // debug_log("Failed to configure network settings");
-//}
-//   WiFi.begin(ssid, pwd);
+  // init wifi connection
+// if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+//        //debug_log("Failed to configure network settings");
+// }
+//    WiFi.begin(ssid, pwd);
 // while (WiFi.status() != WL_CONNECTED) {
-//       //debug_log("connecting to WiFi network");
-//       delay(500);
-//}
+//        //debug_log("connecting to WiFi network");
+//        delay(500);
+// }
+//
   udp.begin(udpPort);
   udp1.begin(udpPort1);
-  
+  delay(1000); 
   xTaskCreatePinnedToCore(Task1code,"Task1",10000,NULL,1,&Task1,0);                         
   //delay(500); 
   xTaskCreatePinnedToCore(Task2code,"Task2",10000,NULL,1,&Task2,1);          
@@ -74,10 +72,10 @@ void Task1code( void * parameter ){
 
   for(;;){
     int size =0;
-     while((size=NMEA.available()))
+     while((size=Serial2.available()))
      {
       size = (size >= BUFFER_SIZE ? BUFFER_SIZE : size);
-      NMEA.readBytes(buff, size);
+      Serial2.readBytes(buff, size);
       udp1.beginPacket(udpAddress, udpPort1);
       udp1.write(buff,size);    
       udp1.endPacket();
